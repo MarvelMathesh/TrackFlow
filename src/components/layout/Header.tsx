@@ -1,20 +1,35 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Bell, 
+  Plus,
   UserCircle
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const location = useLocation();
+  const navigate = useNavigate();
   
   const getPageTitle = () => {
     const path = location.pathname;
     
     if (path === '/') return 'Dashboard';
+    if (path.startsWith('/leads')) {
+      if (path === '/leads/new') return 'New Lead';
+      if (path.includes('/leads/')) return 'Lead Details';
+      return 'Leads';
+    }
+    
     return 'TrackFlow';
+  };
+  
+  const handleCreateNew = () => {
+    if (location.pathname.startsWith('/leads')) {
+      navigate('/leads/new');
+    }
   };
   
   return (
@@ -32,6 +47,17 @@ export function Header() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+        
+        {location.pathname === '/leads' && (
+          <motion.button
+            className="btn btn-primary btn-md"
+            whileTap={{ scale: 0.95 }}
+            onClick={handleCreateNew}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Lead
+          </motion.button>
+        )}
         
         <div className="relative">
           <Bell className="h-5 w-5 text-foreground hover:text-primary cursor-pointer" />

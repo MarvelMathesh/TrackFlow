@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { BarChart4, Settings, HelpCircle, Circle as CircleBolt } from 'lucide-react';
+import { BarChart4, UsersRound, Settings, HelpCircle, Circle as CircleBolt } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: BarChart4 },
+  { name: 'Leads', path: '/leads', icon: UsersRound },
 ];
 
 export function Sidebar() {

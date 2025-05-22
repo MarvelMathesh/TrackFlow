@@ -4,12 +4,13 @@ import { getAuth, signInAnonymously } from 'firebase/auth';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  authDomain: "trackflow-crm.firebaseapp.com",
-  projectId: "trackflow-crm",
-  storageBucket: "trackflow-crm.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef1234567890abcdef"
+  apiKey: "AIzaSyAARF1Cadsawp6d1DoR9TJ6iwkJeWDfq0M",
+  authDomain: "vision-fd9e3.firebaseapp.com",
+  projectId: "vision-fd9e3",
+  storageBucket: "vision-fd9e3.firebasestorage.app",
+  messagingSenderId: "752283748965",
+  appId: "1:752283748965:web:f01efce07d8e13fb91548c",
+  measurementId: "G-JFYKE08132"
 };
 
 // Initialize Firebase

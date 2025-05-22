@@ -1,22 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
-  BarChart3, 
-  ArrowUpRight,
+  UsersRound, 
+  ArrowUpRight, 
+  Calendar,
+  AlertCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-type SimpleDashboardMetrics = {
-  appVersion: string;
-  lastLogin: string;
-}
+import { getDashboardMetrics } from '../lib/dashboard';
+import { DashboardMetrics } from '../lib/types';
+import { formatDate, formatPercentage } from '../lib/utils';
 
 export function Dashboard() {
-  const [loading, setLoading] = useState(false);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  const metrics: SimpleDashboardMetrics = {
-    appVersion: "1.0.0",
-    lastLogin: new Date().toLocaleDateString()
-  };
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const data = await getDashboardMetrics();
+        setMetrics(data);
+      } catch (error) {
+        console.error('Error fetching dashboard metrics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchMetrics();
+  }, []);
   
   if (loading) {
     return (
@@ -29,47 +41,46 @@ export function Dashboard() {
     );
   }
   
+  if (!metrics) {
+    return (
+      <div className="bg-error/10 p-4 rounded-lg border border-error/30 text-error flex items-center">
+        <AlertCircle className="h-5 w-5 mr-2" />
+        <p>Failed to load dashboard data. Please try again later.</p>
+      </div>
+    );
+  }
+  
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold tracking-tight mb-6">Dashboard</h2>
       
-      {/* Placeholder Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <MetricCard 
-          title="App Version"
-          value={metrics.appVersion}
-          icon={<BarChart3 className="h-5 w-5" />}
-          trend={5}
-          href="#"
+          title="Total Leads"
+          value={metrics.totalLeads}
+          icon={<UsersRound className="h-5 w-5" />}
+          trend={10}
+          href="/leads"
         />
         <MetricCard 
-          title="Last Login"
-          value={metrics.lastLogin}
+          title="Open Leads"
+          value={metrics.openLeads}
+          icon={<UsersRound className="h-5 w-5" />}
+          trend={5}
+          href="/leads"
+        />
+        <MetricCard 
+          title="Conversion Rate"
+          value={formatPercentage(metrics.conversionRate)}
           icon={<ArrowUpRight className="h-5 w-5" />}
-          trend={0}
-          href="#"
+          trend={2.5}
+          href="/leads"
         />
       </div>
       
-      {/* Placeholder for Charts and Lists */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <motion.div 
-          className="card p-5 lg:col-span-2"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Welcome to TrackFlow</h3>
-          </div>
-          
-          <div className="h-72 w-full flex items-center justify-center bg-muted/30 rounded-md">
-            <p className="text-muted-foreground">
-              Charts and metrics will be added soon
-            </p>
-          </div>
-        </motion.div>
-        
+      {/* Upcoming Follow-ups List */}
+      <div className="grid grid-cols-1 gap-6">
         <motion.div 
           className="card p-5"
           initial={{ opacity: 0, y: 20 }}
@@ -77,11 +88,39 @@ export function Dashboard() {
           transition={{ delay: 0.2 }}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">System Status</h3>
+            <h3 className="text-lg font-semibold">Upcoming Follow-ups</h3>
+            <Link to="/leads" className="text-sm text-primary hover:underline">
+              View all leads
+            </Link>
           </div>
           
-          <div className="flex items-center justify-center h-72 bg-muted/30 rounded-md">
-            <p className="text-muted-foreground">All systems operational</p>
+          <div className="space-y-4 max-h-[calc(100%-3rem)] overflow-auto">
+            {metrics.upcomingFollowUps.length > 0 ? (
+              metrics.upcomingFollowUps.map((lead) => (
+                <Link 
+                  key={lead.id} 
+                  to={`/leads/${lead.id}`}
+                  className="flex items-start p-3 border rounded-md hover:bg-muted/50 transition-colors"
+                >
+                  <div className="bg-muted rounded-full p-2 mr-3">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm">{lead.name}</h4>
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <span>{lead.company}</span>
+                      <span>•</span>
+                      <span>{formatDate(lead.followUpDate!)}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                <p>No upcoming follow-ups</p>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>
@@ -104,7 +143,7 @@ function MetricCard({ title, value, icon, trend, href }: MetricCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="card p-5 block transition-all hover:shadow-md">
+      <Link to={href} className="card p-5 block transition-all hover:shadow-md">
         <div className="flex justify-between items-start">
           <div>
             <p className="text-muted-foreground text-sm">{title}</p>
@@ -120,7 +159,7 @@ function MetricCard({ title, value, icon, trend, href }: MetricCardProps) {
           </div>
           <span className="text-muted-foreground ml-1">vs last period</span>
         </div>
-      </div>
+      </Link>
     </motion.div>
   );
 }
