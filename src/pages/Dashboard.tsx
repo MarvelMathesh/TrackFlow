@@ -1,165 +1,232 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  UsersRound, 
-  ArrowUpRight, 
-  Calendar,
-  AlertCircle
-} from 'lucide-react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { getDashboardMetrics } from '../lib/dashboard';
-import { DashboardMetrics } from '../lib/types';
-import { formatDate, formatPercentage } from '../lib/utils';
+import { 
+  BarChart, 
+  Users, 
+  ShoppingCart, 
+  DollarSign, 
+  Search, 
+  Bell 
+} from 'lucide-react';
+import MetricCard from '../components/ui/MetricCard';
+import GlassCard from '../components/ui/GlassCard';
+import ActivityFeed from '../components/dashboard/ActivityFeed';
+import FollowUpReminders from '../components/dashboard/FollowUpReminders';
+import StageProgress from '../components/dashboard/StageProgress';
+import RevenueChart from '../components/dashboard/RevenueChart';
+import { useAuth } from '../hooks/useAuth';
+import { useLeads } from '../hooks/useLeads';
+import { useOrders } from '../hooks/useOrders';
+import { useActivity } from '../hooks/useActivity';
+import { formatCurrency, getPercentChange } from '../utils/format';
 
-export function Dashboard() {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
+const Dashboard: React.FC = () => {
+  const { user } = useAuth();
+  const { leads, loading: leadsLoading } = useLeads(user?.uid || null);
+  const { orders, loading: ordersLoading } = useOrders(user?.uid || null);
+  const { activities, loading: activitiesLoading } = useActivity(user?.uid || null);
   
-  useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        const data = await getDashboardMetrics();
-        setMetrics(data);
-      } catch (error) {
-        console.error('Error fetching dashboard metrics:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchMetrics();
-  }, []);
+  // Calculate metrics
+  const totalLeads = leads.length;
+  const totalOrders = orders.length;
+  const totalRevenue = orders.reduce((sum, order) => sum + order.orderValue, 0);
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
   
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading dashboard data...</p>
-        </div>
-      </div>
-    );
-  }
+  // Calculate month-over-month changes for metrics
+  const currentMonth = new Date().getMonth();
+  const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  const currentYear = new Date().getFullYear();
+  const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
   
-  if (!metrics) {
-    return (
-      <div className="bg-error/10 p-4 rounded-lg border border-error/30 text-error flex items-center">
-        <AlertCircle className="h-5 w-5 mr-2" />
-        <p>Failed to load dashboard data. Please try again later.</p>
-      </div>
-    );
-  }
+  const currentMonthLeads = leads.filter(
+    lead => {
+      const date = lead.createdAt.toDate();
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    }
+  ).length;
+  
+  const lastMonthLeads = leads.filter(
+    lead => {
+      const date = lead.createdAt.toDate();
+      return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
+    }
+  ).length;
+  
+  const currentMonthOrders = orders.filter(
+    order => {
+      const date = order.createdAt.toDate();
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    }
+  ).length;
+  
+  const lastMonthOrders = orders.filter(
+    order => {
+      const date = order.createdAt.toDate();
+      return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
+    }
+  ).length;
+  
+  const currentMonthRevenue = orders.filter(
+    order => {
+      const date = order.createdAt.toDate();
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    }
+  ).reduce((sum, order) => sum + order.orderValue, 0);
+  
+  const lastMonthRevenue = orders.filter(
+    order => {
+      const date = order.createdAt.toDate();
+      return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
+    }
+  ).reduce((sum, order) => sum + order.orderValue, 0);
+  
+  const leadsChangePercent = getPercentChange(currentMonthLeads, lastMonthLeads);
+  const ordersChangePercent = getPercentChange(currentMonthOrders, lastMonthOrders);
+  const revenueChangePercent = getPercentChange(currentMonthRevenue, lastMonthRevenue);
   
   return (
-    <div className="space-y-8">
-      <h2 className="text-3xl font-bold tracking-tight mb-6">Dashboard</h2>
-      
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <MetricCard 
-          title="Total Leads"
-          value={metrics.totalLeads}
-          icon={<UsersRound className="h-5 w-5" />}
-          trend={10}
-          href="/leads"
-        />
-        <MetricCard 
-          title="Open Leads"
-          value={metrics.openLeads}
-          icon={<UsersRound className="h-5 w-5" />}
-          trend={5}
-          href="/leads"
-        />
-        <MetricCard 
-          title="Conversion Rate"
-          value={formatPercentage(metrics.conversionRate)}
-          icon={<ArrowUpRight className="h-5 w-5" />}
-          trend={2.5}
-          href="/leads"
-        />
-      </div>
-      
-      {/* Upcoming Follow-ups List */}
-      <div className="grid grid-cols-1 gap-6">
-        <motion.div 
-          className="card p-5"
-          initial={{ opacity: 0, y: 20 }}
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <motion.h1 
+          className="text-3xl font-display font-bold text-gray-900"
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ duration: 0.5 }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Upcoming Follow-ups</h3>
-            <Link to="/leads" className="text-sm text-primary hover:underline">
-              View all leads
-            </Link>
+          Dashboard
+        </motion.h1>
+        
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+              <Search size={16} className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search..."
+              className="pl-10 pr-4 py-2 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
           </div>
           
-          <div className="space-y-4 max-h-[calc(100%-3rem)] overflow-auto">
-            {metrics.upcomingFollowUps.length > 0 ? (
-              metrics.upcomingFollowUps.map((lead) => (
-                <Link 
-                  key={lead.id} 
-                  to={`/leads/${lead.id}`}
-                  className="flex items-start p-3 border rounded-md hover:bg-muted/50 transition-colors"
-                >
-                  <div className="bg-muted rounded-full p-2 mr-3">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-sm">{lead.name}</h4>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <span>{lead.company}</span>
-                      <span>•</span>
-                      <span>{formatDate(lead.followUpDate!)}</span>
-                    </div>
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                <p>No upcoming follow-ups</p>
-              </div>
-            )}
+          <div className="relative">
+            <Bell size={20} className="text-gray-600 cursor-pointer" />
+            <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary-600 rounded-full flex items-center justify-center text-xs text-white">
+              3
+            </span>
           </div>
+          
+          {user?.photoURL ? (
+            <img
+              src={user.photoURL}
+              alt={user.displayName || 'User'}
+              className="h-10 w-10 rounded-full object-cover ring-2 ring-white cursor-pointer"
+            />
+          ) : (
+            <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center cursor-pointer">
+              <span className="font-medium text-primary-700">
+                {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
+          <MetricCard
+            title="Total Leads"
+            value={totalLeads}
+            icon={<Users size={20} className="text-primary-600" />}
+            change={leadsChangePercent}
+            shadowColor="rgba(12, 150, 230, 0.3)"
+          />
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+        >
+          <MetricCard
+            title="Total Orders"
+            value={totalOrders}
+            icon={<ShoppingCart size={20} className="text-secondary-600" />}
+            change={ordersChangePercent}
+            shadowColor="rgba(23, 175, 172, 0.3)"
+          />
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+        >
+          <MetricCard
+            title="Revenue"
+            value={formatCurrency(totalRevenue)}
+            icon={<DollarSign size={20} className="text-accent-600" />}
+            change={revenueChangePercent}
+            shadowColor="rgba(255, 122, 10, 0.3)"
+          />
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.4 }}
+        >
+          <MetricCard
+            title="Avg. Order Value"
+            value={formatCurrency(avgOrderValue)}
+            icon={<BarChart size={20} className="text-success-600" />}
+            shadowColor="rgba(16, 185, 129, 0.3)"
+          />
+        </motion.div>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <motion.div 
+          className="lg:col-span-2"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+        >
+          <RevenueChart orders={orders} loading={ordersLoading} />
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.6 }}
+        >
+          <StageProgress leads={leads} loading={leadsLoading} />
+        </motion.div>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div 
+          className="lg:col-span-2"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.7 }}
+        >
+          <ActivityFeed activities={activities} loading={activitiesLoading} />
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.8 }}
+        >
+          <FollowUpReminders leads={leads} loading={leadsLoading} />
         </motion.div>
       </div>
     </div>
   );
-}
+};
 
-interface MetricCardProps {
-  title: string;
-  value: number | string;
-  icon: React.ReactNode;
-  trend: number;
-  href: string;
-}
-
-function MetricCard({ title, value, icon, trend, href }: MetricCardProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <Link to={href} className="card p-5 block transition-all hover:shadow-md">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-muted-foreground text-sm">{title}</p>
-            <p className="text-2xl font-bold mt-1">{value}</p>
-          </div>
-          <div className="bg-primary/10 rounded-full p-2">
-            {icon}
-          </div>
-        </div>
-        <div className="mt-4 flex items-center text-xs">
-          <div className={trend > 0 ? 'text-success' : 'text-error'}>
-            <span>{trend > 0 ? '+' : ''}{trend}%</span>
-          </div>
-          <span className="text-muted-foreground ml-1">vs last period</span>
-        </div>
-      </Link>
-    </motion.div>
-  );
-}
+export default Dashboard;

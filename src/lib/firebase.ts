@@ -1,29 +1,22 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
+import { getAnalytics } from 'firebase/analytics';
 
-// Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAARF1Cadsawp6d1DoR9TJ6iwkJeWDfq0M",
-  authDomain: "vision-fd9e3.firebaseapp.com",
-  projectId: "vision-fd9e3",
-  storageBucket: "vision-fd9e3.firebasestorage.app",
-  messagingSenderId: "752283748965",
-  appId: "1:752283748965:web:f01efce07d8e13fb91548c",
-  measurementId: "G-JFYKE08132"
+  apiKey: "AIzaSyDnqaemdxoKJlpjJHH7XO2l8EgIa3iPpUA",
+  authDomain: "marvel-007.firebaseapp.com",
+  projectId: "marvel-007",
+  storageBucket: "marvel-007.firebasestorage.app",
+  messagingSenderId: "849207209470",
+  appId: "1:849207209470:web:01c7364bfb6bd505a964af",
+  measurementId: "G-5J2MF1DLLZ"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const analytics = getAnalytics(app);
 
-signInAnonymously(auth)
-  .then(() => {
-    console.log('Signed in anonymously');
-  })
-  .catch((error) => {
-    console.error('Error signing in anonymously:', error);
-  });
-
-export { db, auth };
+export default app;
