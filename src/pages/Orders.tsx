@@ -11,7 +11,11 @@ import {
   PackageOpen, 
   Clock, 
   Edit, 
-  Trash2 
+  Trash2,
+  X,
+  User,
+  Package,
+  DollarSign
 } from 'lucide-react';
 import GlassCard from '../components/ui/GlassCard';
 import Button from '../components/ui/Button';
@@ -23,8 +27,18 @@ import { formatCurrency, formatDate, getStageColor } from '../utils/format';
 
 const Orders: React.FC = () => {
   const { user } = useAuth();
-  const { orders, loading, deleteOrder } = useOrders(user?.uid || null);
+  const { orders, loading, deleteOrder, addOrder } = useOrders(user?.uid || null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({
+    leadId: '',
+    customerName: '',
+    status: 'received',
+    orderValue: '',
+    courier: '',
+    trackingNumber: '',
+    notes: ''
+  });
   
   // Filter orders based on search term
   const filteredOrders = orders.filter(order => 
@@ -54,11 +68,46 @@ const Orders: React.FC = () => {
         return <Clock size={18} className="text-gray-500" />;
     }
   };
-  
-  const handleDeleteOrder = (id: string, name: string) => {
+    const handleDeleteOrder = (id: string, name: string) => {
     if (window.confirm(`Are you sure you want to delete order for ${name}?`)) {
       deleteOrder(id, name, user?.displayName || 'User');
     }
+  };
+  const handleAddOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const orderData = {
+      leadId: formData.leadId,
+      customerName: formData.customerName,
+      status: formData.status as 'received' | 'development' | 'ready' | 'dispatched',
+      orderValue: parseFloat(formData.orderValue) || 0,
+      dispatchDate: null,
+      courier: formData.courier,
+      trackingNumber: formData.trackingNumber,
+      notes: formData.notes
+    };
+
+    const result = await addOrder(orderData, user?.displayName || 'User');
+    
+    if (result) {
+      setShowAddModal(false);
+      setFormData({
+        leadId: '',
+        customerName: '',
+        status: 'received',
+        orderValue: '',
+        courier: '',
+        trackingNumber: '',
+        notes: ''
+      });
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
   
   return (
@@ -73,10 +122,9 @@ const Orders: React.FC = () => {
           <ShoppingCart className="inline-block mr-2" size={28} />
           Orders
         </motion.h1>
-        
-        <Button
+          <Button
           leftIcon={<Plus size={18} />}
-          onClick={() => {/* Open modal to add order */}}
+          onClick={() => setShowAddModal(true)}
         >
           New Order
         </Button>
@@ -195,7 +243,146 @@ const Orders: React.FC = () => {
                 )}
               </div>
             </GlassCard>
-          ))}
+          ))}        </div>
+      )}
+      
+      {/* Add Order Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-display font-bold text-gray-900 flex items-center">
+                  <Package className="mr-3 text-primary-600" size={24} />
+                  Add New Order
+                </h2>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleAddOrder} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Customer Name *
+                  </label>
+                  <Input
+                    name="customerName"
+                    value={formData.customerName}
+                    onChange={handleInputChange}
+                    placeholder="Enter customer name"
+                    leftIcon={<User size={16} className="text-gray-400" />}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lead ID
+                  </label>
+                  <Input
+                    name="leadId"
+                    value={formData.leadId}
+                    onChange={handleInputChange}
+                    placeholder="Associated lead ID"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Order Value *
+                  </label>
+                  <Input
+                    name="orderValue"
+                    type="number"
+                    step="0.01"
+                    value={formData.orderValue}
+                    onChange={handleInputChange}
+                    placeholder="0.00"
+                    leftIcon={<DollarSign size={16} className="text-gray-400" />}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="received">Received</option>
+                    <option value="development">Development</option>
+                    <option value="ready">Ready</option>
+                    <option value="dispatched">Dispatched</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Courier
+                  </label>
+                  <Input
+                    name="courier"
+                    value={formData.courier}
+                    onChange={handleInputChange}
+                    placeholder="Courier service name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tracking Number
+                  </label>
+                  <Input
+                    name="trackingNumber"
+                    value={formData.trackingNumber}
+                    onChange={handleInputChange}
+                    placeholder="Tracking number"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes
+                </label>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  placeholder="Additional notes about the order..."
+                />
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Add Order
+                </Button>
+              </div>
+            </form>
+          </motion.div>
         </div>
       )}
     </div>
